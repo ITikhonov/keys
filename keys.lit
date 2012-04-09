@@ -1,0 +1,51 @@
+
+=>keys.c
+
+-#include <math.h>
+-#include <stdio.h>
+-#include <unistd.h>
+-#include <string.h>
+-#include <stdint.h>
+-#include <stdlib.h>
+-
+-#include <jack/jack.h>
+-
+-jack_port_t *o;
+-
+-int op=1;
+-
+-int process (jack_nframes_t nframes, void *arg) {
+-	printf("frames %u\n",nframes);
+-	jack_default_audio_sample_t *os=(jack_default_audio_sample_t*)jack_port_get_buffer(o,nframes);
+-
+-	int i;
+-	for(i=0;i<nframes;i++) {
+-		os[i]=op;
+-	}
+-	op=-op;
+-
+-	return 0;      
+-}
+-
+-int srate (jack_nframes_t nframes, void *arg) {
+-	printf ("the sample rate is now %u/sec\n",(int)nframes);
+-	return 0;
+-}
+-
+-int main() {
+-	jack_client_t *c;
+-
+-	c=jack_client_open("keys",JackNoStartServer,0);
+-
+-	jack_set_process_callback(c,process,0);
+-	jack_set_sample_rate_callback(c,srate,0);
+-	o=jack_port_register(c,"out",JACK_DEFAULT_AUDIO_TYPE,JackPortIsOutput,0);
+-	jack_activate(c);
+-
+-	jack_connect(c,jack_port_name(o),"system:playback_1");
+-	jack_connect(c,jack_port_name(o),"system:playback_2");
+-
+-	for(;;) sleep(1);
+-}
+-
+-
