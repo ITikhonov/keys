@@ -181,7 +181,6 @@ When pressed start generator
 -
 -jack_port_t *o;
 -
--static float lp=0;
 -int process (jack_nframes_t nframes, void *arg) {
 -	jack_default_audio_sample_t *os=(jack_default_audio_sample_t*)jack_port_get_buffer(o,nframes);
 -
@@ -200,8 +199,8 @@ When pressed start generator
 -				v*=k;
 -			}
 -			float a=0.1;
--			v=v*a + (1-a)*lp;
--			lp=v;
+-			v=v*a + (1-a)*g->lp;
+-			g->lp=v;
 
 -			os[i]+=v;
 -		}
