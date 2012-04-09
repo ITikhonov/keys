@@ -70,7 +70,7 @@ Read keys
 -					xcb_key_symbols_free(sm);
 -					key(k,0,ke->time);
 -				}
-
+-			break;
 -			case XCB_KEY_PRESS: {
 -					xcb_key_press_event_t *ke=(xcb_key_press_event_t*)e;
 -					xcb_key_symbols_t *sm=xcb_key_symbols_alloc(c);
@@ -84,8 +84,79 @@ Read keys
 -}
 
 =keyboard
+-static int keys[256];
 -void key(unsigned int k,int v, int t) {
 -	printf("k %04x v %u - %u\n",k,v,t);
+-	if(k>255) return;
+
+When key is not already pressed, handle press.
+
+-	if(!keys[k] && v) press(k);
+
+If key is released, release.
+
+-	else if(!v) release(k);
+-
+-	keys[k]=v;
+-	
+-}
+
+
+Sound is played through four generators. Start parameter
+is when gen started in frames since beginning. Period is in
+frames. If start is zero, then gen is not running.
+
+=sound
+-int frame=0;
+
+-struct gen {
+-	int start;
+-	int key;
+-	float period;
+-} gen[4]={{0},{0},{0},{0}};
+
+Generate key to frequency map:
+=sound
+-float chart[256];
+
+-void make_freq_chart() {
+-	memset(chart,0,sizeof(chart));
+-	//        "CcDdEFfGgAaBCcDdEFfGgAaBCcDdEFfGgAaBCcDdEFfGgAaBCcDdEFfGgAaBCcDdEFfGgAaB
+-	char *keys="zsxdcvgbhnjmq2w3er5t6y7ui9o0p[=]";
+-	char *p;
+-	int i=0; for(p=keys;*p;p++) {
+-		chart[(int)*p]=261.626*pow(2,i++/12.0);
+-	}
+-}
+
+
+When pressed start generator
+
+=sound
+-static struct gen *getgen() {
+-	int i; for(i=0;i<4;i++) { if(gen[i].start==0) return &gen[i]; }
+-	return 0;
+-}
+
+-static struct gen *getgenbyk(int k) {
+-	int i; for(i=0;i<4;i++) { if(gen[i].key==k) return &gen[i]; }
+-	return 0;
+-}
+
+-void press(int k) {
+-	struct gen *g=getgen();
+-	if(!g) return;
+-	float ck=chart[k];
+-	if(ck==0) return;
+-	g->period=48000/ck;
+-	g->key=k;
+-	g->start=frame;
+-	printf("gen %u\n",k);
+-}
+
+-void release(int k) {
+-	struct gen *g=getgenbyk(k);
+-	if(g) g->start=0;
 -}
 
 =>keys.c
@@ -100,22 +171,34 @@ Read keys
 -
 -#include <jack/jack.h>
 
+>sound
 >keyboard
 >xwindow
 -
 -jack_port_t *o;
 -
--int op=1;
--
+-static float lp=0;
 -int process (jack_nframes_t nframes, void *arg) {
--	printf("frames %u\n",nframes);
 -	jack_default_audio_sample_t *os=(jack_default_audio_sample_t*)jack_port_get_buffer(o,nframes);
 -
 -	int i;
 -	for(i=0;i<nframes;i++) {
--		os[i]=op;
+-		os[i]=0;
+-		int j; for(j=0;j<4;j++) {
+-			struct gen *g=&gen[j];
+-			if(!g->start) continue;
+-			int d=frame-g->start;
+-			os[i]+=(((int)(d/g->period))&1)?0.1:-0.1;
+-		}
+
+Applying crude low-pass filter
+
+-		float a=0.1;
+-		os[i]=os[i]*a + (1-a)*lp;
+-		lp=os[i];
+
+-		frame++;
 -	}
--	op=-op;
 -
 -	return 0;      
 -}
@@ -139,6 +222,7 @@ Read keys
 -	jack_connect(c,jack_port_name(o),"system:playback_2");
 -
 -	make_window();
+-	make_freq_chart();
 -	event_loop();
 -	return 0;
 -}
