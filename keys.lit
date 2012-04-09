@@ -1,5 +1,95 @@
 
+Using xcb to create window and catch keyboard input
+
+=includes
+-#include <xcb/xcb.h>
+-#include <xcb/xcb_atom.h>
+-#include <xcb/xcb_icccm.h>
+-#include <xcb/xcb_aux.h>
+-#include <xcb/xcb_keysyms.h>
+-#include <xcb/xkb.h>
+
+-#include <X11/keysym.h>
+-#include <X11/Xlib-xcb.h>
+-#include <X11/XKBlib.h>
+
+
+Helper function to resolve atom by name.
+
+=xwindow
+-static xcb_atom_t xcb_atom_get(xcb_connection_t *c,char *name) {
+-	xcb_intern_atom_cookie_t cookie=xcb_intern_atom(c,0,strlen(name),name);
+-	xcb_intern_atom_reply_t *reply=xcb_intern_atom_reply(c,cookie,NULL);
+-	if(!reply) return XCB_NONE;
+-	return reply->atom;
+-}
+
+Make tiny window.
+
+=xwindow
+-static xcb_connection_t    *c;
+-void make_window() {
+-	Display *dpy=XOpenDisplay(NULL);
+-	c=XGetXCBConnection(dpy);
+-	xcb_screen_t *s=xcb_setup_roots_iterator(xcb_get_setup(c)).data;
+-	xcb_window_t w=xcb_generate_id(c);
+-	uint32_t mv[]={s->black_pixel,XCB_EVENT_MASK_KEY_PRESS|XCB_EVENT_MASK_KEY_RELEASE};
+-	xcb_create_window(c,s->root_depth,w,s->root,
+-		10,10,10,10,1,XCB_WINDOW_CLASS_INPUT_OUTPUT,s->root_visual,
+-		XCB_CW_BACK_PIXEL|XCB_CW_EVENT_MASK,mv);
+-	xcb_icccm_set_wm_transient_for(c,w,w);
+-	xcb_change_property(c,XCB_PROP_MODE_REPLACE,w,xcb_atom_get(c, "WM_CLASS"),XCB_ATOM_STRING,8,14,"keys\0keys");
+-	xcb_map_window(c, w);
+-	xcb_flush(c);
+
+Xwindow is a big pile of mess so here is a bit of magic
+to turn off (somewhat) key autorepeat:
+
+	xcb_xkb_per_client_flags_cookie_t cookie=xcb_xkb_per_client_flags_unchecked(c,XCB_XKB_ID_USE_CORE_KBD,XCB_XKB_PER_CLIENT_FLAG_DETECTABLE_AUTO_REPEAT,XCB_XKB_PER_CLIENT_FLAG_DETECTABLE_AUTO_REPEAT,0,0,0);
+	xcb_xkb_per_client_flags_reply(c,cookie,0);
+
+But this does not work as XCB is pretty unfinished now and
+there is no xkb library (but headers are here). Instead
+we use X11-xlib compability layer.
+
+-	XkbSetDetectableAutoRepeat(dpy,True,0);
+-}
+
+Read keys
+
+=xwindow
+-void event_loop() {
+-	xcb_generic_event_t *e;
+-	for(;;) {
+-		while ((e=xcb_poll_for_event(c))) {
+-			switch (e->response_type & ~0x80) {
+-			case XCB_KEY_RELEASE: {
+-					xcb_key_press_event_t *ke=(xcb_key_press_event_t*)e;
+-					xcb_key_symbols_t *sm=xcb_key_symbols_alloc(c);
+-					xcb_keysym_t k=xcb_key_press_lookup_keysym (sm,ke,0);
+-					xcb_key_symbols_free(sm);
+-					key(k,0,ke->time);
+-				}
+
+-			case XCB_KEY_PRESS: {
+-					xcb_key_press_event_t *ke=(xcb_key_press_event_t*)e;
+-					xcb_key_symbols_t *sm=xcb_key_symbols_alloc(c);
+-					xcb_keysym_t k=xcb_key_press_lookup_keysym (sm,ke,0);
+-					xcb_key_symbols_free(sm);
+-					key(k,1,ke->time);
+-				}
+-			}
+-		}
+-	}
+-}
+
+=keyboard
+-void key(unsigned int k,int v, int t) {
+-	printf("k %04x v %u - %u\n",k,v,t);
+-}
+
 =>keys.c
+>includes
 
 -#include <math.h>
 -#include <stdio.h>
@@ -9,6 +99,9 @@
 -#include <stdlib.h>
 -
 -#include <jack/jack.h>
+
+>keyboard
+>xwindow
 -
 -jack_port_t *o;
 -
@@ -45,7 +138,9 @@
 -	jack_connect(c,jack_port_name(o),"system:playback_1");
 -	jack_connect(c,jack_port_name(o),"system:playback_2");
 -
--	for(;;) sleep(1);
+-	make_window();
+-	event_loop();
+-	return 0;
 -}
 -
 -

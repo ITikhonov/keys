@@ -1,5 +1,5 @@
 CFLAGS=-Wall -Werror -g
-LDLIBS=-ljack -lm
+LDLIBS=-ljack -lm -lxcb-keysyms -lxcb -lxcb-icccm -lX11-xcb -lX11
 
 keys: keys.c
 
