@@ -111,8 +111,10 @@ frames. If start is zero, then gen is not running.
 
 -struct gen {
 -	int start;
+-	int end;
 -	int key;
 -	float period;
+-	float lp;
 -} gen[4]={{0},{0},{0},{0}};
 
 Generate key to frequency map:
@@ -144,19 +146,21 @@ When pressed start generator
 -}
 
 -void press(int k) {
--	struct gen *g=getgen();
+-	struct gen *g=getgenbyk(k);
+-	if(!g) g=getgen();
 -	if(!g) return;
 -	float ck=chart[k];
 -	if(ck==0) return;
 -	g->period=48000/ck;
 -	g->key=k;
 -	g->start=frame;
+-	g->end=0;
 -	printf("gen %u\n",k);
 -}
 
 -void release(int k) {
 -	struct gen *g=getgenbyk(k);
--	if(g) g->start=0;
+-	if(g) { g->end=frame; }
 -}
 
 =>keys.c
@@ -188,14 +192,21 @@ When pressed start generator
 -			struct gen *g=&gen[j];
 -			if(!g->start) continue;
 -			int d=frame-g->start;
--			os[i]+=(((int)(d/g->period))&1)?0.1:-0.1;
+-			float v=(((int)(d/g->period))&1)?0.1:-0.1;
+-			if(g->end) {
+-				int d=frame-g->end;
+-				float k=1.0-(d/4800.0);
+-				if(k<0) { k=0; g->start=0; }
+-				v*=k;
+-			}
+-			float a=0.1;
+-			v=v*a + (1-a)*lp;
+-			lp=v;
+
+-			os[i]+=v;
 -		}
 
 Applying crude low-pass filter
-
--		float a=0.1;
--		os[i]=os[i]*a + (1-a)*lp;
--		lp=os[i];
 
 -		frame++;
 -	}
