@@ -33,7 +33,7 @@ Make tiny window.
 -	c=XGetXCBConnection(dpy);
 -	xcb_screen_t *s=xcb_setup_roots_iterator(xcb_get_setup(c)).data;
 -	xcb_window_t w=xcb_generate_id(c);
--	uint32_t mv[]={s->black_pixel,XCB_EVENT_MASK_KEY_PRESS|XCB_EVENT_MASK_KEY_RELEASE};
+-	uint32_t mv[]={s->black_pixel,XCB_EVENT_MASK_KEY_PRESS|XCB_EVENT_MASK_KEY_RELEASE|XCB_EVENT_MASK_FOCUS_CHANGE};
 -	xcb_create_window(c,s->root_depth,w,s->root,
 -		10,10,10,10,1,XCB_WINDOW_CLASS_INPUT_OUTPUT,s->root_visual,
 -		XCB_CW_BACK_PIXEL|XCB_CW_EVENT_MASK,mv);
@@ -72,12 +72,16 @@ Read keys
 -				}
 -			break;
 -			case XCB_KEY_PRESS: {
+-					open_jack();
 -					xcb_key_press_event_t *ke=(xcb_key_press_event_t*)e;
 -					xcb_key_symbols_t *sm=xcb_key_symbols_alloc(c);
 -					xcb_keysym_t k=xcb_key_press_lookup_keysym (sm,ke,0);
 -					xcb_key_symbols_free(sm);
 -					key(k,1,ke->time);
 -				}
+-			break;
+-			case XCB_FOCUS_IN: open_jack(); break;
+-			case XCB_FOCUS_OUT: close_jack(); break;
 -			}
 -		}
 -	}
@@ -107,7 +111,7 @@ is when gen started in frames since beginning. Period is in
 frames. If start is zero, then gen is not running.
 
 =sound
--int frame=0;
+-long long frame=0;
 
 -struct gen {
 -	int start;
@@ -155,6 +159,9 @@ When pressed start generator
 -	g->key=k;
 -	g->start=frame;
 -	g->end=0;
+
+Start jack
+
 -	printf("gen %u\n",k);
 -}
 
@@ -163,22 +170,11 @@ When pressed start generator
 -	if(g) { g->end=frame; }
 -}
 
-=>keys.c
->includes
-
--#include <math.h>
--#include <stdio.h>
--#include <unistd.h>
--#include <string.h>
--#include <stdint.h>
--#include <stdlib.h>
--
+=includes
 -#include <jack/jack.h>
 
->sound
->keyboard
->xwindow
--
+
+=sound
 -jack_port_t *o;
 -
 -int process (jack_nframes_t nframes, void *arg) {
@@ -217,24 +213,57 @@ Applying crude low-pass filter
 -	printf ("the sample rate is now %u/sec\n",(int)nframes);
 -	return 0;
 -}
+
+
+We open jack only when needed
+
+=sound
+-jack_client_t *jc=0;
+
+-void open_jack() {
+-	if(jc) return;
+-	jc=jack_client_open("keys",JackNoStartServer,0);
 -
+-	jack_set_process_callback(jc,process,0);
+-	jack_set_sample_rate_callback(jc,srate,0);
+-	o=jack_port_register(jc,"out",JACK_DEFAULT_AUDIO_TYPE,JackPortIsOutput,0);
+-	jack_activate(jc);
+-
+-	jack_connect(jc,jack_port_name(o),"system:playback_1");
+-	jack_connect(jc,jack_port_name(o),"system:playback_2");
+-
+-}
+
+And close it when not needed.
+
+=sound
+-void close_jack() {
+-	if(!jc) return;
+-	printf("closing\n");
+-	jack_client_close(jc);
+-	jc=0;
+-}
+
+
+=>keys.c
+>includes
+
+-#include <math.h>
+-#include <stdio.h>
+-#include <unistd.h>
+-#include <string.h>
+-#include <stdint.h>
+-#include <stdlib.h>
+
+>sound
+>keyboard
+>xwindow
+
 -int main() {
--	jack_client_t *c;
--
--	c=jack_client_open("keys",JackNoStartServer,0);
--
--	jack_set_process_callback(c,process,0);
--	jack_set_sample_rate_callback(c,srate,0);
--	o=jack_port_register(c,"out",JACK_DEFAULT_AUDIO_TYPE,JackPortIsOutput,0);
--	jack_activate(c);
--
--	jack_connect(c,jack_port_name(o),"system:playback_1");
--	jack_connect(c,jack_port_name(o),"system:playback_2");
--
 -	make_window();
 -	make_freq_chart();
 -	event_loop();
 -	return 0;
 -}
--
--
+
+
