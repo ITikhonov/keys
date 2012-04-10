@@ -90,12 +90,11 @@ Read keys
 =keyboard
 -static int keys[256];
 -void key(unsigned int k,int v, int t) {
--	printf("k %04x v %u - %u\n",k,v,t);
 -	if(k>255) return;
 
 When key is not already pressed, handle press.
 
--	if(!keys[k] && v) press(k);
+-	if(!keys[k] && v) press(k,keys[0x20]);
 
 If key is released, release.
 
@@ -149,20 +148,17 @@ When pressed start generator
 -	return 0;
 -}
 
--void press(int k) {
+-void press(int k,int shift) {
 -	struct gen *g=getgenbyk(k);
 -	if(!g) g=getgen();
 -	if(!g) return;
 -	float ck=chart[k];
 -	if(ck==0) return;
+-	if(shift) ck/=2;
 -	g->period=48000/ck;
 -	g->key=k;
 -	g->start=frame;
 -	g->end=0;
-
-Start jack
-
--	printf("gen %u\n",k);
 -}
 
 -void release(int k) {
