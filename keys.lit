@@ -61,7 +61,7 @@ Read keys
 -void event_loop() {
 -	xcb_generic_event_t *e;
 -	for(;;) {
--		while ((e=xcb_poll_for_event(c))) {
+-		while ((e=xcb_wait_for_event(c))) {
 -			switch (e->response_type & ~0x80) {
 -			case XCB_KEY_RELEASE: {
 -					xcb_key_press_event_t *ke=(xcb_key_press_event_t*)e;
