@@ -197,7 +197,14 @@ When pressed start generator
 -			os[i]+=v;
 -		}
 
-Applying crude low-pass filter
+Metronome 100ms tick
+
+-#if 0
+-		int d=frame%48000;
+-		if(d<4800) {
+-			os[i]+=0.1*(1-d/4800.0);
+-		}
+-#endif
 
 -		frame++;
 -	}
