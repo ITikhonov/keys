@@ -88,9 +88,8 @@ Read keys
 -}
 
 =keyboard
--static int keys[256];
--void key(unsigned int k,int v, int t) {
--	if(k>255) return;
+-static int keys[0x10000];
+-void key(uint16_t k,int v, int t) {
 
 When key is not already pressed, handle press.
 
@@ -122,15 +121,18 @@ frames. If start is zero, then gen is not running.
 
 Generate key to frequency map:
 =sound
--float chart[256];
+-float chart[0x10000];
 
 -void make_freq_chart() {
 -	memset(chart,0,sizeof(chart));
--	//        "CcDdEFfGgAaBCcDdEFfGgAaBCcDdEFfGgAaBCcDdEFfGgAaBCcDdEFfGgAaBCcDdEFfGgAaB
--	char *keys="zsxdcvgbhnjmq2w3er5t6y7ui9o0p[=]";
--	char *p;
+-	//char *keys="zsxdcvgbhnjmq2w3er5t6y7ui9o0p[=]";
+-	//int *keys={"zxcvbnm,./ФФ"+"asdfghjkl;'Ф"+"qwertyuiop[]"+"1234567890-="
+-
+-	uint16_t keys[]={'z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/', XK_Shift_R, XK_Up, 'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', '\'', XK_Return, 'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '[', ']', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '='};
+-
+-	uint16_t *p;
 -	int i=0; for(p=keys;*p;p++) {
--		chart[(int)*p]=261.626*pow(2,i++/12.0);
+-		chart[*p]=130.813*pow(2,i++/12.0);
 -	}
 -}
 
@@ -148,20 +150,27 @@ When pressed start generator
 -	return 0;
 -}
 
--void press(int k,int shift) {
+-void press(uint16_t k,int shift) {
 -	struct gen *g=getgenbyk(k);
 -	if(!g) g=getgen();
 -	if(!g) return;
+-
 -	float ck=chart[k];
+-
+-	char *names="CcDdEFfGgAaBCcDdEFfGgAaBCcDdEFfGgAaBCcDdEFfGgAaBCcDdEFfGgAaBCcDdEFfGgAaB";
+-	float octs=log2(ck/130.813);
+-	//printf("press %u (%g)\n",k,ck);
 -	if(ck==0) return;
+-	printf("%c%u\n",names[(int)(12*octs+0.1)],3+(int)(octs+0.1));
 -	if(shift) ck/=2;
 -	g->period=48000/ck;
 -	g->key=k;
 -	g->start=frame;
 -	g->end=0;
+-
 -}
 
--void release(int k) {
+-void release(uint16_t k) {
 -	struct gen *g=getgenbyk(k);
 -	if(g) { g->end=frame; }
 -}
