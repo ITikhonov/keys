@@ -121,6 +121,7 @@ frames. If start is zero, then gen is not running.
 -} gen[4]={{0},{0},{0},{0}};
 
 Generate key to frequency map:
+
 =sound
 -float chart[256];
 
@@ -130,9 +131,10 @@ Generate key to frequency map:
 -	char *keys="zsxdcvgbhnjmq2w3er5t6y7ui9o0p[=]";
 -	char *p;
 -	int i=0; for(p=keys;*p;p++) {
--		chart[(int)*p]=261.626*pow(2,i++/12.0);
+-		chart[(int)*p]=261.626*pow(2,i++/12.0)+drand48()/1000.0;
 -	}
 -}
+
 
 
 When pressed start generator
