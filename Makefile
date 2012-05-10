@@ -1,8 +1,9 @@
 CFLAGS=-Wall -Werror -g
 LDLIBS=-ljack -lm -lxcb-keysyms -lxcb -lxcb-icccm -lX11-xcb -lX11
 
-keys: keys.c
+keys: .build/keys.c
+	gcc -o keys $(CFLAGS) $^ $(LDLIBS)
 
-keys.c: keys.lit
-	python ~/bin/tangle.py keys.lit
+.build/keys.c: keys.lit
+	mkdir -p .build && cd .build && python ~/bin/tangle.py ../keys.lit
 
