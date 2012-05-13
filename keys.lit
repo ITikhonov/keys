@@ -200,16 +200,16 @@ When pressed start generator
 -			struct gen *g=&gen[j];
 -			if(!g->start) continue;
 -			int d=frame-g->start;
--			float v=(((int)(d/g->period))&1)?0.1:-0.1;
+-			float v=0.1*sin(2*M_PI*d/g->period);
 -			if(g->end) {
 -				int d=frame-g->end;
 -				float k=1.0-(d/4800.0);
 -				if(k<0) { k=0; g->start=0; }
 -				v*=k;
 -			}
--			float a=0.1;
--			v=v*a + (1-a)*g->lp;
--			g->lp=v;
+-			//float a=0.1;
+-			//v=v*a + (1-a)*g->lp;
+-			//g->lp=v;
 
 -			os[i]+=v;
 -		}
