@@ -80,6 +80,7 @@ Read keys
 -				}
 -			break;
 -			}
+-			free(e);
 -		}
 -	}
 -}
